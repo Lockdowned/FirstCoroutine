@@ -13,11 +13,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.coroutineimage.databinding.ActivityMainBinding
 import kotlinx.coroutines.*
-import java.lang.Runnable
-import java.util.concurrent.Executor
-import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 import kotlin.system.measureTimeMillis
 
 class MainActivity : AppCompatActivity() {
@@ -45,7 +40,6 @@ class MainActivity : AppCompatActivity() {
     StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val data: Intent? = result.data
-            val imgUri = data?.data
             data?.clipData?.let { imgData ->
                 val compressedImgList = doCompression(imgData)
 
