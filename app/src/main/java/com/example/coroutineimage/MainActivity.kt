@@ -13,6 +13,9 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.coroutineimage.databinding.ActivityMainBinding
 import kotlinx.coroutines.*
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.system.measureTimeMillis
 
 class MainActivity : AppCompatActivity() {
@@ -56,7 +59,7 @@ class MainActivity : AppCompatActivity() {
 //    private fun doCompression(imgData: ClipData): List<CompressedImg> {
 //        val compressedImgList = mutableListOf<CompressedImg>()
 //
-//        val es: ExecutorService = Executors.newFixedThreadPool(5)
+//        val es: ExecutorService = Executors.newFixedThreadPool(120)
 //
 //        val imgCount = imgData.itemCount
 //        val compressionTime = measureTimeMillis {
@@ -79,6 +82,33 @@ class MainActivity : AppCompatActivity() {
     /**
     With Coroutine
      */
+//    private fun doCompression(imgData: ClipData): List<CompressedImg> {
+//        val compressedImgList = mutableListOf<CompressedImg>()
+//
+//        var job: Job
+//
+//        val imgCount = imgData.itemCount
+//        val compressionTime = measureTimeMillis {
+//            job = lifecycleScope.launch(Dispatchers.Default) {
+//                val deferredALot: List<Deferred<Int>> = (0 until imgCount).map {
+//                    async {
+//                        val imgUri = imgData.getItemAt(it).uri
+//                        Log.d(logTag, "Img $it URI: $imgUri")
+//                        compressedImgList.add(CompressedImg(compressImage(imgUri), 50))
+//                        it
+//                    }
+//                }
+//                deferredALot.awaitAll()
+//            }
+//            runBlocking {
+//                job.join()
+//            }
+//        }
+//
+//        Log.d(logTag, "Time executing: $compressionTime, final img count ${compressedImgList.size}")
+//        return compressedImgList
+//    }
+
     private fun doCompression(imgData: ClipData): List<CompressedImg> {
         val compressedImgList = mutableListOf<CompressedImg>()
 
@@ -87,15 +117,20 @@ class MainActivity : AppCompatActivity() {
         val imgCount = imgData.itemCount
         val compressionTime = measureTimeMillis {
             job = lifecycleScope.launch(Dispatchers.Default) {
-                val deferredALot: List<Deferred<Int>> = (0 until imgCount).map {
-                    async {
-                        val imgUri = imgData.getItemAt(it).uri
-                        Log.d(logTag, "Img $it URI: $imgUri")
+                Log.d(logTag,"In First Job  Thread: ${Thread.currentThread().name}")
+                var deferred: Deferred<Boolean>? = null
+                for (i in 0 until imgCount) {
+                    deferred = async {
+                        val imgUri = imgData.getItemAt(i).uri
+                        Log.d(logTag, "Img $i URI: $imgUri")
+                        if (i == imgCount / 2) {
+                            delay(5000) // interesting: why working correctly ВОПРОС
+                            Log.d(logTag, "Sleeping coroutine in Thread: ${Thread.currentThread().name}")
+                        }
                         compressedImgList.add(CompressedImg(compressImage(imgUri), 50))
-                        it
                     }
                 }
-                deferredALot.awaitAll()
+                deferred?.await()
             }
             runBlocking {
                 job.join()
@@ -113,42 +148,11 @@ class MainActivity : AppCompatActivity() {
 //
 //        val imgCount = imgData.itemCount
 //        val compressionTime = measureTimeMillis {
-//            job = lifecycleScope.launch(Dispatchers.Default) {
-//                Log.d(logTag,"In First Job  Thread: ${Thread.currentThread().name}")
-//                var deferred: Deferred<Boolean>? = null
-//                for (i in 0 until imgCount) {
-//                    deferred = async {
-//                        val imgUri = imgData.getItemAt(i).uri
-//                        Log.d(logTag, "Img $i URI: $imgUri")
-////                        if (i == imgCount / 2) {
-////                            delay(5000) // interesting: why working correctly ВОПРОС
-////                        }
-//                        compressedImgList.add(CompressedImg(compressImage(imgUri), 50))
-//                    }
-//                }
-//                deferred?.await()
-//            }
-//            runBlocking {
-//                job.join()
-//            }
-//        }
-//
-//        Log.d(logTag, "Time executing: $compressionTime, final img count ${compressedImgList.size}")
-//        return compressedImgList
-//    }
-
-//    private fun doCompression(imgData: ClipData): List<CompressedImg> {
-//        val compressedImgList = mutableListOf<CompressedImg>()
-//
-//        var job: Job
-//
-//        val imgCount = imgData.itemCount
-//        val compressionTime = measureTimeMillis {
 //            job = lifecycleScope.launch(Dispatchers.Unconfined) { // why dying nothing Dispatchers.Main ВОПРОС
 //                Log.d(logTag,"In First Job Thread: ${Thread.currentThread().name}")
 //                val list: MutableList<Job> = mutableListOf()
 //                for (i in 0 until imgCount) {
-//                    val whatEver = lifecycleScope.launch(Dispatchers.Default) {
+//                    val whatEver = lifecycleScope.launch(Dispatchers.IO) {
 //                        val imgUri = imgData.getItemAt(i).uri
 //                        Log.d(logTag, "Img $i URI: $imgUri")
 //                        compressedImgList.add(CompressedImg(compressImage(imgUri), 50))
@@ -201,7 +205,6 @@ class MainActivity : AppCompatActivity() {
         Log.d(logTag, "Size after compress ${scaledImg.allocationByteCount}  $imgUri")
 
 
-
         return scaledImg
     }
 
@@ -228,6 +231,4 @@ class MainActivity : AppCompatActivity() {
         )
         return scaledBitmap
     }
-
-
 }
